@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>アハ体験！ねこちゃん脳トレ</title>
+    <style>
+        /* 画面全体のデザイン（黒背景で真ん中に寄せる） */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* ゲーム画面を入れる枠（スマホに合わせた縦長） */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            max-width: 450px; /* スマホで見やすい幅 */
+            aspect-ratio: 3 / 4; /* 縦長比率 */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            background-color: #000;
+        }
+
+        /* ねこちゃんの画像（2枚を完全に重ねる） */
+        .cat-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none; /* 画像への直接タッチを無効化 */
+        }
+
+        #img-end {
+            opacity: 0; /* 最初、2枚目は透明 */
+        }
+
+        /* 案内テキスト */
+        #hint-text {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        /* 大正解！の文字（極太・赤） */
+        #success-text {
+            display: none;
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0000;
+            font-size: 64px;
+            font-weight: bold;
+            white-space: nowrap;
+            text-shadow: 
+                -3px -3px 0 #fff,  3px -3px 0 #fff,
+                -3px  3px 0 #fff,  3px  3px 0 #fff; /* 白い極太の縁取り */
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* クラッカー用のキャンバス */
+        #canvas-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* 🎯 タッチを検知する正解エリア（透明なボタン） */
+        .target-area {
+            position: absolute;
+            /* background-color: rgba(255, 0, 0, 0.3); ※位置を確認したい時はここをONに */
+            cursor: pointer;
+            z-index: 2;
+        }
+        /* 最初の上向きしっぽエリア */
+        #area-start {
+            top: 25%;
+            left: 70%;
+            width: 20%;
+            height: 25%;
+        }
+        /* 最後の丸まったしっぽエリア */
+        #area-end {
+            top: 65%;
+            left: 70%;
+            width: 25%;
+            height: 25%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <img id="img-start" class="cat-img" src="cat_start.png" alt="猫1">
+        <img id="img-end" class="cat-img" src="cat_end.png" alt="猫2">
+
+        <div id="area-start" class="target-area"></div>
+        <div id="area-end" class="target-area"></div>
+
+        <canvas id="canvas-particles"></canvas>
+
+        <div id="hint-text">変わったところをタッチしてね！</div>
+        <div id="success-text">大正解！</div>
+    </div>
+
+    <script>
+        const imgEnd = document.getElementById('img-end');
+        const hintText = document.getElementById('hint-text');
+        const successText = document.getElementById('success-text');
+        const canvas = document.getElementById('canvas-particles');
+        const ctx = canvas.getContext('2d');
+
+        // キャンバスのサイズを合わせる
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+
+        let opacity = 0;
+        let isCorrect = false;
+        let particles = [];
+
+        // 🐢 変化スピードの設定（ここを小さくするほど超ゆっくりになります）
+        const changeSpeed = 0.0006; 
+
+        // じわじわ画像を切り替えるアニメーション（Pythonのループと同じ）
+        function fadeAnimation() {
+            if (!isCorrect && opacity < 1) {
+                opacity += changeSpeed;
+                if (opacity > 1) opacity = 1;
+                imgEnd.style.opacity = opacity;
+            }
+            
+            // 紙吹雪の描画
+            if (isCorrect) {
+                updateParticles();
+            }
+
+            requestAnimationFrame(fadeAnimation);
+        }
+
+        // 正解した時の処理（クラッカー発射！）
+        function doCorrect() {
+            if (isCorrect) return;
+            isCorrect = true;
+            
+            hintText.style.display = 'none';
+            successText.style.display = 'block';
+            
+            spawnCracker();
+        }
+
+        // 2つのタッチエリアに「正解イベント」を登録
+        document.getElementById('area-start').addEventListener('click', doCorrect);
+        document.getElementById('area-end').addEventListener('click', doCorrect);
+        document.getElementById('area-start').addEventListener('touchstart', doCorrect);
+        document.getElementById('area-end').addEventListener('touchstart', doCorrect);
+
+        // 🎉 紙吹雪（クラッカー）の仕組み
+        function spawnCracker() {
+            const colors = ['#ff3232', '#32ff32', '#3264ff', '#ffd700', '#ff69b4', '#00ffff'];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height * 0.45;
+
+            for (let i = 0; i < 120; i++) {
+                particles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() * -12) - 3,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 8 + 5
+                });
+            }
+        }
+
+        function updateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.25; // 重力
+                p.vx *= 0.98; // 空気抵抗
+
+                if (p.y > canvas.height) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            }
+        }
+
+        // ゲーム開始
+        fadeAnimation();
+    </script>
+</body>
+</html>

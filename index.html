@@ -46,6 +46,49 @@
             opacity: 0; /* 最初、2枚目は透明 */
         }
 
+        /* 📊 プログレスバー全体の枠 */
+        #progress-container {
+            position: absolute;
+            bottom: 50px; /* 案内テキストの少し上に配置 */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 「Start」「End」の文字デザイン */
+        .progress-label {
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: monospace;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        /* 伸びる横棒の外枠（グレーの背景） */
+        .bar-bg {
+            flex-grow: 1;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin: 0 10px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        /* 実際に伸びる横棒（緑色に光るデザイン） */
+        #progress-bar {
+            width: 0%; /* 最初は0% */
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            box-shadow: 0 0 8px #8bc34a;
+            transition: width 0.1s linear;
+        }
+
         /* 案内テキスト */
         #hint-text {
             position: absolute;
@@ -122,6 +165,14 @@
 
         <canvas id="canvas-particles"></canvas>
 
+        <div id="progress-container">
+            <span class="progress-label">Start</span>
+            <div class="bar-bg">
+                <div id="progress-bar"></div>
+            </div>
+            <span id="end-label" class="progress-label" style="opacity: 0.3;">End</span>
+        </div>
+
         <div id="hint-text">変わったところをタッチしてね！</div>
         <div id="success-text">大正解！</div>
     </div>
@@ -132,8 +183,10 @@
         const successText = document.getElementById('success-text');
         const canvas = document.getElementById('canvas-particles');
         const ctx = canvas.getContext('2d');
+        const progressBar = document.getElementById('progress-bar');
+        const endLabel = document.getElementById('end-label');
 
-        // キャンバスのサイズを合わせる
+        /* 追加したパーツを読み込む */
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
 
@@ -144,12 +197,23 @@
         // 🐢 変化スピードの設定（ここを小さくするほど超ゆっくりになります）
         const changeSpeed = 0.0006; 
 
-        // じわじわ画像を切り替えるアニメーション（Pythonのループと同じ）
+        // じわじわ画像を切り替え、ゲージを伸ばすアニメーション
         function fadeAnimation() {
             if (!isCorrect && opacity < 1) {
                 opacity += changeSpeed;
                 if (opacity > 1) opacity = 1;
                 imgEnd.style.opacity = opacity;
+
+                // 📈 透明度（0〜1）をパーセント（0〜100%）に変換してゲージを伸ばす
+                const progressPercent = opacity * 100;
+                progressBar.style.width = progressPercent + '%';
+
+                // 🏁 100%（End）に達したら、Endの文字をハッキリ光らせる
+                if (opacity >= 1) {
+                    endLabel.style.color = '#ffd700'; // 金色に光らせる
+                    endLabel.style.opacity = '1';
+                    endLabel.style.textShadow = '0 0 8px #ffd700';
+                }
             }
             
             // 紙吹雪の描画

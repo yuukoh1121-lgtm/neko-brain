@@ -89,7 +89,7 @@
             transition: width 0.1s linear;
         }
 
-        /* 案内テキスト（✨ bottomからtopに変更して上部に配置） */
+        /* 案内テキスト */
         #hint-text {
             position: absolute;
             top: 20px;
@@ -135,23 +135,18 @@
         /* 🎯 タッチを検知する正解エリア（透明なボタン） */
         .target-area {
             position: absolute;
-            /* background-color: rgba(255, 0, 0, 0.3); ※位置を確認したい時はここをONに */
+            /* 位置を確認したい時は、下の「/*」を外すと赤く見えます */
+            /* background-color: rgba(255, 0, 0, 0.4); */
             cursor: pointer;
             z-index: 2;
         }
-        /* 最初の上向きしっぽエリア */
-        #area-start {
-            top: 25%;
-            left: 70%;
-            width: 20%;
-            height: 25%;
-        }
-        /* 最後の丸まったしっぽエリア */
-        #area-end {
-            top: 65%;
-            left: 70%;
-            width: 25%;
-            height: 25%;
+        
+        /* ✨ 新しい茶トラちゃんの手（前足）の位置に合わせて修正 */
+        #area-hands {
+            top: 73%;      /* 画面の上から73%の位置 */
+            left: 12%;     /* 画面の左から12%の位置から */
+            width: 32%;    /* 横幅32%分（両方の前足カバー） */
+            height: 17%;   /* 縦幅17%分 */
         }
     </style>
 </head>
@@ -161,8 +156,7 @@
         <img id="img-start" class="cat-img" src="cat_start.png" alt="猫1">
         <img id="img-end" class="cat-img" src="cat_end.png" alt="猫2">
 
-        <div id="area-start" class="target-area"></div>
-        <div id="area-end" class="target-area"></div>
+        <div id="area-hands" class="target-area"></div>
 
         <canvas id="canvas-particles"></canvas>
 
@@ -187,7 +181,6 @@
         const progressBar = document.getElementById('progress-bar');
         const endLabel = document.getElementById('end-label');
 
-        /* 追加したパーツを読み込む */
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
 
@@ -205,11 +198,10 @@
                 if (opacity > 1) opacity = 1;
                 imgEnd.style.opacity = opacity;
 
-                // 📈 透明度（0〜1）をパーセント（0〜100%）に変換してゲージを伸ばす
+                // 📈 透明度をゲージに反映
                 const progressPercent = opacity * 100;
                 progressBar.style.width = progressPercent + '%';
 
-                // 🏁 100%（End）に達したら、Endの文字をハッキリ光らせる
                 if (opacity >= 1) {
                     endLabel.style.color = '#ffd700'; // 金色に光らせる
                     endLabel.style.opacity = '1';
@@ -236,11 +228,10 @@
             spawnCracker();
         }
 
-        // 2つのタッチエリアに「正解イベント」を登録
-        document.getElementById('area-start').addEventListener('click', doCorrect);
-        document.getElementById('area-end').addEventListener('click', doCorrect);
-        document.getElementById('area-start').addEventListener('touchstart', doCorrect);
-        document.getElementById('area-end').addEventListener('touchstart', doCorrect);
+        // ✨ 新しい手用のタッチエリアに正解イベントを登録
+        const targetArea = document.getElementById('area-hands');
+        targetArea.addEventListener('click', doCorrect);
+        targetArea.addEventListener('touchstart', doCorrect);
 
         // 🎉 紙吹雪（クラッカー）の仕組み
         function spawnCracker() {
